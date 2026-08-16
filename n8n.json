@@ -1,0 +1,310 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyHour"
+            }
+          ]
+        },
+        "filters": {
+          "q": "newer_than:7d (from:linkedin.com OR from:jobalerts-noreply@linkedin.com OR from:bdjobs.com OR from:indeed.com OR from:glassdoor.com OR subject:job OR subject:jobs OR subject:hiring OR subject:developer)"
+        }
+      },
+      "id": "3dcdfc9f-1d0f-4490-9d27-45d222de8a10",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        112
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2u0Gd0rQwYuqzgrS",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {}
+      },
+      "id": "0b7e0ff3-3e74-44d2-bea3-51db2636e251",
+      "name": "Get Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        112
+      ],
+      "webhookId": "12b65f3c-a796-4719-b6b8-57ae8c1143e8",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2u0Gd0rQwYuqzgrS",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze the following email. It may be a single job or a job-alert DIGEST containing many separate job listings. Identify EVERY distinct job listing and classify each one.\n\nSubject: {{ $json.subject }}\nFrom: {{ $json.from.text }}\nSnippet: {{ $json.snippet }}\nBody:\n{{ $json.text }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a strict personal job-filtering assistant for a Flutter / Mobile App Developer.\n\nThe email you receive may be a single job or a job-alert DIGEST that lists MANY separate jobs (e.g. LinkedIn / Bdjobs / Indeed alerts). You MUST return an array \"jobs\" containing one entry for EVERY distinct job listing you can find in the email. Do not merge multiple jobs into one entry and do not drop any listing.\n\nFor EACH job, decide whether it is relevant to a career as a Flutter / Mobile App Developer and set its \"status\".\n\nRELEVANT roles include: Flutter Developer, Flutter Engineer, Flutter/Dart Developer, Mobile App Developer, Mobile Application Developer, Mobile Engineer, Cross-platform Mobile Developer, Android Developer, iOS Developer, React Native Developer, Software Engineer roles where Flutter/mobile development is a major part, and Junior/Mid-level Flutter or Mobile App Developer roles.\n\nPrioritize jobs mentioning: Flutter, Dart, Mobile App Development, Android, iOS, Cross-platform development, Firebase, REST API, Socket.IO, GetX, Riverpod, React Native, Mobile application development.\n\nDO NOT mark a job relevant just because it contains the word \"developer\" or \"software engineer\".\n\nMark NOT_RELEVANT for jobs primarily focused on: Web development, Frontend web, Backend, DevOps, Data Science, Data Analyst, Machine Learning, AI Engineer, QA/Testing, UI/UX Designer, WordPress, PHP, Laravel, Python backend, Java backend, .NET backend, Embedded/Linux-only, Sales, Marketing, HR, Accounting, non-technical jobs.\n\nRelevance rules (apply per job):\n1. If Flutter is explicitly mentioned, mark RELEVANT.\n2. If mobile app development is explicitly mentioned, mark RELEVANT.\n3. If Android/iOS is mentioned but Flutter is not, mark RELEVANT only when it is clearly a mobile development position.\n4. A generic software developer / web developer job is NOT RELEVANT.\n5. If there is not enough information to decide, mark REVIEW.\n\nJOB TRACKING DATA EXTRACTION (per job):\n1. Job title  2. Company name  3. Recruiter/contact name  4. Recruiter email  5. Recruiter phone  6. Job location  7. Work type: Remote / Hybrid / On-site / Not specified  8. Required experience  9. Salary  10. Required qualifications (requirements array)  11. Required technologies (technologies array)  12. Application URL (job_url)  13. Job source (e.g. LinkedIn, Bdjobs)  14. Original sender email (job_email)  15. Original email subject (job_subject)  16. Short job summary\n\nIMPORTANT extraction rules:\n- Never invent recruiter information, phone number, salary, or application URL. If unavailable, return an empty string \"\" (or [] for arrays).\n- Extract the actual application/job URL for that specific listing when available; prefer the direct job/application URL over a website homepage.\n- Set job_email to the original sender email and job_subject to the original email subject for every job.\n\nNever invent information. Keep each summary short. Be strict about Flutter/mobile relevance, and remember to return ALL jobs in the email, each with its own status."
+        }
+      },
+      "id": "f351f712-9ae4-4b4c-a1fc-b2148ad62e3b",
+      "name": "Flutter AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        448,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "36395aee-3fff-4b89-99ae-5f62c099e676",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        432,
+        352
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "yqWO2THy4dS2ST10",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\"type\":\"object\",\"properties\":{\"jobs\":{\"type\":\"array\",\"description\":\"Every distinct job listing found in the email. Include ALL jobs; mark relevance per job.\",\"items\":{\"type\":\"object\",\"properties\":{\"status\":{\"type\":\"string\",\"enum\":[\"RELEVANT\",\"NOT_RELEVANT\",\"REVIEW\"]},\"job_title\":{\"type\":\"string\"},\"company\":{\"type\":\"string\"},\"recruiter_name\":{\"type\":\"string\"},\"recruiter_email\":{\"type\":\"string\"},\"recruiter_phone\":{\"type\":\"string\"},\"location\":{\"type\":\"string\"},\"work_type\":{\"type\":\"string\"},\"experience\":{\"type\":\"string\"},\"salary\":{\"type\":\"string\"},\"requirements\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"technologies\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"job_url\":{\"type\":\"string\"},\"source\":{\"type\":\"string\"},\"job_email\":{\"type\":\"string\"},\"job_subject\":{\"type\":\"string\"},\"summary\":{\"type\":\"string\"},\"reason\":{\"type\":\"string\"}},\"required\":[\"status\",\"job_title\",\"company\",\"recruiter_name\",\"recruiter_email\",\"recruiter_phone\",\"location\",\"work_type\",\"experience\",\"salary\",\"requirements\",\"technologies\",\"job_url\",\"source\",\"job_email\",\"job_subject\",\"summary\",\"reason\"]}}},\"required\":[\"jobs\"]}"
+      },
+      "id": "f0162ff1-f75b-41f5-a41f-c99a2b8c2294",
+      "name": "Parse Job JSON",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        592,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One input item per email (Flutter AI Agent output). Emit one output item per RELEVANT job.\nconst agentItems = $input.all();\nconst emails = $('Get Email').all();\nconst out = [];\n\nfor (let i = 0; i < agentItems.length; i++) {\n  const output = (agentItems[i].json && agentItems[i].json.output) || {};\n  const jobs = Array.isArray(output.jobs) ? output.jobs : [];\n  const email = (emails[i] && emails[i].json) || {};\n  const senderEmail = (email.from && email.from.value && email.from.value[0] && email.from.value[0].address) || (email.from && email.from.text) || '';\n\n  for (const job of jobs) {\n    if (String(job.status || '').toUpperCase() !== 'RELEVANT') continue;\n\n    const techs = Array.isArray(job.technologies) ? job.technologies : [];\n    const reqs = Array.isArray(job.requirements) ? job.requirements : [];\n    const techStr = techs.join(', ');\n    const haystack = (techs.join(' ') + ' ' + (job.job_title || '') + ' ' + (job.summary || '')).toLowerCase();\n\n    let score = 0;\n    if (haystack.includes('flutter')) score += 40;\n    if (haystack.includes('dart')) score += 20;\n    if (haystack.includes('mobile') || haystack.includes('android') || haystack.includes('ios')) score += 15;\n    if (haystack.includes('firebase')) score += 5;\n    if (haystack.includes('rest')) score += 5;\n    if (haystack.includes('getx') || haystack.includes('riverpod')) score += 5;\n    if (String(job.work_type || '').toLowerCase().includes('remote')) score += 5;\n    if (String(job.experience || '').trim() !== '') score += 5;\n    if (score > 100) score = 100;\n\n    const url = String(job.job_url || '').trim();\n    const company = String(job.company || '').trim();\n    const title = String(job.job_title || '').trim();\n    const dedupKey = url ? url.toLowerCase() : (company.toLowerCase() + '|' + title.toLowerCase());\n\n    out.push({ json: {\n      'Application Date': '',\n      'Application Time': '',\n      'Job Found Date': $now.toFormat('yyyy-MM-dd'),\n      'Job Found Time': $now.toFormat('HH:mm'),\n      'Job Title': title,\n      'Company': company,\n      'Recruiter Name': job.recruiter_name || '',\n      'Recruiter Email': job.recruiter_email || '',\n      'Recruiter Phone': job.recruiter_phone || '',\n      'Location': job.location || '',\n      'Work Type': job.work_type || '',\n      'Salary': job.salary || '',\n      'Experience': job.experience || '',\n      'Requirements': reqs.join('; '),\n      'Technologies': techStr,\n      'Apply Link': url,\n      'Source': job.source || '',\n      'Job Email': job.job_email || senderEmail,\n      'Job Email Subject': job.job_subject || email.subject || '',\n      'Status': 'New',\n      'Notes': '',\n      'Job Summary': job.summary || '',\n      'Match Score': score,\n      'Dedup Key': dedupKey,\n    }});\n  }\n}\n\nreturn out;"
+      },
+      "id": "35925b06-345e-46cf-a877-137492c477f7",
+      "name": "Job Data Extractor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1eHm9Vrwzeon_jYLLUvDmLZwxy_uBppRnXCJQ077Wn0A",
+          "mode": "list",
+          "cachedResultName": "Flutter Job Post",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1eHm9Vrwzeon_jYLLUvDmLZwxy_uBppRnXCJQ077Wn0A/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1eHm9Vrwzeon_jYLLUvDmLZwxy_uBppRnXCJQ077Wn0A/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "c9594c62-ed12-42fe-8326-0ab5975bdb30",
+      "name": "Get Existing Jobs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1024,
+        112
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "4j4JTwgadYXDm4TJ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Keep only jobs whose Dedup Key is not already in the sheet, and de-dup within this run.\nconst jobs = $('Job Data Extractor').all();\nconst existingRows = $input.all();\n\nconst existingKeys = new Set(\n  existingRows\n    .map(r => String((r.json && r.json['Dedup Key']) || '').trim().toLowerCase())\n    .filter(k => k !== '')\n);\n\nconst out = [];\nconst seenThisRun = new Set();\n\nfor (const item of jobs) {\n  const key = String((item.json && item.json['Dedup Key']) || '').trim().toLowerCase();\n  if (key === '') continue;\n  if (existingKeys.has(key) || seenThisRun.has(key)) continue;\n  seenThisRun.add(key);\n  out.push({ json: item.json });\n}\n\nreturn out;"
+      },
+      "id": "e8a87abe-eec2-4a5e-b905-b89e07fb41fa",
+      "name": "Filter New Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1eHm9Vrwzeon_jYLLUvDmLZwxy_uBppRnXCJQ077Wn0A",
+          "mode": "list",
+          "cachedResultName": "Flutter Job Post",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1eHm9Vrwzeon_jYLLUvDmLZwxy_uBppRnXCJQ077Wn0A/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1eHm9Vrwzeon_jYLLUvDmLZwxy_uBppRnXCJQ077Wn0A/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "c37c6252-7234-4371-a108-cd2c26d3daeb",
+      "name": "Flutter Job Tracker",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1920,
+        112
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "4j4JTwgadYXDm4TJ",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Email": {
+      "main": [
+        [
+          {
+            "node": "Flutter AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flutter AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Job Data Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Flutter AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Job JSON": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Flutter AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job Data Extractor": {
+      "main": [
+        [
+          {
+            "node": "Get Existing Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Existing Jobs": {
+      "main": [
+        [
+          {
+            "node": "Filter New Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter New Jobs": {
+      "main": [
+        [
+          {
+            "node": "Flutter Job Tracker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6aa63e80844689b3ee11933e2bb31e4715bea9c7b054b3dac8ffab305c7184d5"
+  }
+}
