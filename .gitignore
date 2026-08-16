@@ -1,0 +1,36 @@
+# Virtual Environment
+venv/
+env/
+.env
+
+# Google Credentials & Auth Tokens (NEVER COMMIT THESE)
+credentials.json
+token.pickle
+token_sheets.pickle
+token_sheets.json
+
+# Personal Data
+cv.pdf
+*.csv
+Job_result.csv
+
+# Machine Learning Models
+*.pkl
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+.gitignore
